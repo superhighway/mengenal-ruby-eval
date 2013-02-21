@@ -3,7 +3,14 @@ require 'open3'
 require 'digest/sha1'
 require 'dalli'
 
-DC = Dalli::Client.new('localhost:11211')
+if ENV["MEMCACHIER_SERVERS"]
+  cache = Dalli::Client.new(ENV["MEMCACHIER_SERVERS"].split(","),
+          {username: ENV["MEMCACHIER_USERNAME"],
+           password: ENV["MEMCACHIER_PASSWORD"]})
+else
+  cache = Dalli::Client.new('localhost:11211')
+end
+DC = cache
 
 post '/' do
   content_type 'text/plain'
