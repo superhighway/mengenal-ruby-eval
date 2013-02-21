@@ -14,13 +14,16 @@ DC = cache
 
 post '/' do
   content_type 'text/plain'
-  command = params[:command]
+  snippet = params[:snippet]
 
-  if command.bytesize > 1048576
-    halt 400, "Command is too long."
+  snippet_size = snippet.bytesize
+  if snippet_size > 1048576
+    halt 400, "Snippet is too long."
+  elsif snippet_size <= 0
+    halt 400, "Snippet is empty."
   end
 
-  cache_key = Digest::SHA1.hexdigest(command)
+  cache_key = Digest::SHA1.hexdigest(snippet)
 
   if cached_output = DC.get(cache_key)
     cached_output
@@ -29,10 +32,12 @@ post '/' do
     eval_output = ''
 
     begin
-      file.write command
+      file.write snippet
       file.rewind
       stdin, stdout, stderr = Open3.popen3("ruby #{file.path}")
-      eval_output += stdout.readlines.join + stderr.readlines.join
+      error_message = stderr.readlines.join
+      error_message.gsub!(/^\/[^:]*:/, "mengenal-ruby:")
+      eval_output += stdout.readlines.join + error_message
     ensure
       file.close
       file.unlink
