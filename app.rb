@@ -3,17 +3,23 @@ require 'open3'
 require 'digest/sha1'
 require 'dalli'
 
+
 if ENV["MEMCACHIER_SERVERS"]
   cache = Dalli::Client.new(ENV["MEMCACHIER_SERVERS"].split(","),
           {username: ENV["MEMCACHIER_USERNAME"],
            password: ENV["MEMCACHIER_PASSWORD"]})
+  allowed_origin = "http://nyan.catcyb.org"
 else
   cache = Dalli::Client.new('localhost:11211')
+  allowed_origin = "http://localhost:4567"
 end
 DC = cache
+ALLOWED_ORIGIN = allowed_origin
 
 post '/' do
   content_type 'text/plain'
+  headers['Access-Control-Allow-Origin'] = ALLOWED_ORIGIN
+  headers['Access-Control-Allow-Methods'] = "POST"
   snippet = params[:snippet]
 
   snippet_size = snippet.bytesize
