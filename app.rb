@@ -15,6 +15,7 @@ else
 end
 DC = cache
 ALLOWED_ORIGIN = allowed_origin
+BLACKLIST_SCRIPT = "[:`, :exec, :system, :require].each {|m| Object.send(:undef_method, m)}; Object.send(:remove_const, :ENV);"
 
 post '/' do
   content_type 'text/plain'
@@ -38,11 +39,11 @@ post '/' do
     eval_output = ''
 
     begin
-      file.write snippet
+      file.write BLACKLIST_SCRIPT + snippet
       file.rewind
       stdin, stdout, stderr = Open3.popen3("ruby -T3 #{file.path}")
       error_message = stderr.readlines.join
-      error_message.gsub!(/^\/[^:]*:/, "mengenal-ruby:")
+      error_message.gsub!(/^?\s*\/[^:]*:/, " mengenal-ruby:")
       eval_output += stdout.readlines.join + error_message
     ensure
       file.close
