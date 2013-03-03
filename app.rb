@@ -40,7 +40,7 @@ post '/' do
     begin
       file.write snippet
       file.rewind
-      stdin, stdout, stderr = Open3.popen3("ruby #{file.path}")
+      stdin, stdout, stderr = Open3.popen3("ruby -T3 #{file.path}")
       error_message = stderr.readlines.join
       error_message.gsub!(/^\/[^:]*:/, "mengenal-ruby:")
       eval_output += stdout.readlines.join + error_message
