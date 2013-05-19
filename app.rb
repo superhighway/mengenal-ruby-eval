@@ -3,6 +3,9 @@ require 'open3'
 require 'digest/sha1'
 require 'dalli'
 require 'json'
+require 'activesupport/all'
+require 'markaby'
+require 'markaby/sinatra'
 
 
 if ENV["ENVIRONMENT"] == "heroku"
@@ -17,7 +20,7 @@ end
 DC = cache
 ALLOWED_ORIGINS = allowed_origins
 BLACKLIST_SCRIPT = "[:`, :exec, :system, :require].each {|m| Object.send(:undef_method, m)}; Object.send(:remove_const, :ENV);"
-CHALLENGE_PATHS = JSON.parse File.read 'challenge_paths.json'
+CHALLENGE_PATHS = JSON.parse(File.read 'challenge_paths.json')["challenge_paths"]
 
 def allowed_origin(server_name)
   if server_name
@@ -53,6 +56,19 @@ def eval_snippet(snippet)
   end
 end
 
+def validate_snippet!(snippet)
+  snippet_size = snippet.bytesize
+  if snippet_size > 1048576
+    halt 400, "Snippet is too long."
+  elsif snippet_size <= 0
+    halt 400, "Snippet is empty."
+  end
+end
+
+def eval_snippet!(snippet)
+  validate_snippet! snippet
+  eval_snippet snippet
+end
 
 
 
@@ -67,16 +83,8 @@ post '/' do
     headers['Access-Control-Allow-Origin'] = server_name
     headers['Access-Control-Allow-Methods'] = "POST"
   end
-  snippet = params[:snippet]
 
-  snippet_size = snippet.bytesize
-  if snippet_size > 1048576
-    halt 400, "Snippet is too long."
-  elsif snippet_size <= 0
-    halt 400, "Snippet is empty."
-  end
-
-  eval_snippet snippet
+  eval_snippet! params[:snippet]
 end
 
 post '/coba-ruby.json' do
@@ -85,24 +93,15 @@ post '/coba-ruby.json' do
     headers['Access-Control-Allow-Origin'] = server_name
     headers['Access-Control-Allow-Methods'] = "POST"
   end
-  snippet = params[:snippet]
-  challenge_path = params[:challenge_path]
 
-  snippet_size = snippet.bytesize
-  if snippet_size > 1048576
-    halt 400, "Snippet is too long."
-  elsif snippet_size <= 0
-    halt 400, "Snippet is empty."
-  end
-
-  output = eval_snippet snippet
+  output = eval_snippet! params[:snippet]
   is_correct = false #output == (File.read "answers/#{challenge_path}.txt")
+
   json_response =  {
     is_correct: is_correct,
     output: output
   }
-
-  challenge_index = CHALLENGE_PATHS.index(challenge_path)
+  challenge_index = CHALLENGE_PATHS.index(params[:challenge_path])
   next_challenge_path = CHALLENGE_PATHS[challenge_index+1] if challenge_index
   if is_correct && next_challenge_path
     json_response.merge!(next_challenge_path: next_challenge_path)
