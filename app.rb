@@ -71,6 +71,18 @@ def eval_snippet!(snippet)
   eval_snippet snippet
 end
 
+def is_correct_output(output, challenge_path)
+  if (answer_path = Dir["answers/#{challenge_path}*"].first)
+    if answer_path.end_with? ".rb"
+      false
+    else
+      output == File.read(answer_path)
+    end
+  else
+    false
+  end
+end
+
 
 
 
@@ -96,13 +108,14 @@ post '/coba-ruby.json' do
   end
 
   output = eval_snippet! params[:snippet]
-  is_correct = false #output == (File.read "answers/#{challenge_path}.txt")
+  challenge_path = params[:challenge_path]
+  is_correct = is_correct_output output, challenge_path
 
   json_response =  {
     is_correct: is_correct,
     output: output
   }
-  challenge_index = CHALLENGE_PATHS.index(params[:challenge_path])
+  challenge_index = CHALLENGE_PATHS.index challenge_path
   next_challenge_path = CHALLENGE_PATHS[challenge_index+1] if challenge_index
   if is_correct && next_challenge_path
     json_response.merge!(next_challenge_path: next_challenge_path)
