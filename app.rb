@@ -3,48 +3,55 @@ require 'open3'
 require 'digest/sha1'
 require 'dalli'
 require 'json'
-require 'active_support'
-require 'active_support/all'
-require 'markaby'
-require 'markaby/sinatra'
 
+set :challenge_paths, JSON.parse(File.read 'challenge_paths.json')["challenge_paths"]
 
 if ENV["ENVIRONMENT"] == "heroku"
-  cache = Dalli::Client.new(ENV["MEMCACHIER_SERVERS"].split(","),
+  set :simplify_error_trace, true
+  set :enable_uglify_ruby, true
+  set :enable_cache, true
+  set :cache_adapter, Dalli::Client.new(ENV["MEMCACHIER_SERVERS"].split(","),
           {username: ENV["MEMCACHIER_USERNAME"],
            password: ENV["MEMCACHIER_PASSWORD"]})
-  allowed_origins = %w{http://nyan.catcyb.org}
+  set :allowed_origins, %w{http://nyan.catcyb.org}
 else
-  cache = Dalli::Client.new('localhost:11211')
-  allowed_origins = %w{http://localhost:4567}
+  simulate_heroku = true
+  set :simplify_error_trace, simulate_heroku
+  set :enable_uglify_ruby, simulate_heroku
+  set :enable_cache, simulate_heroku
+  set :cache_adapter, Dalli::Client.new('localhost:11211')
+  set :allowed_origins, %w{http://localhost:4567}
 end
-DC = cache
-ALLOWED_ORIGINS = allowed_origins
-BLACKLIST_SCRIPT = "[:`, :exec, :system, :require].each {|m| Object.send(:undef_method, m)}; Object.send(:remove_const, :ENV);"
-CHALLENGE_PATHS = JSON.parse(File.read 'challenge_paths.json')["challenge_paths"]
+
+def uglify_ruby(script)
+  return script if !script || !settings.enable_uglify_ruby
+  script.split("\n").join(";") + ";"
+end
+
+set :snippet_prefix, uglify_ruby(File.read('snippet_prefix.rb'))
 
 def allowed_origin(server_name)
   if server_name
     server_name = server_name.to_s.strip
-    return server_name if ALLOWED_ORIGINS.include?(server_name)
+    return server_name if settings.allowed_origins.include?(server_name)
   end
 end
 
 def eval_snippet(snippet)
   cache_key = Digest::SHA1.hexdigest(snippet)
 
-  if cached_output = DC.get(cache_key)
+  if settings.enable_cache && cached_output = settings.cache_adapter.get(cache_key)
     cached_output
   else
     file = Tempfile.new("mengenal-ruby-eval-#{Time.now.to_i}")
     eval_output = ''
 
     begin
-      file.write BLACKLIST_SCRIPT + snippet
+      file.write settings.snippet_prefix + snippet
       file.rewind
-      stdin, stdout, stderr = Open3.popen3("ruby -T3 #{file.path}")
+      stdin, stdout, stderr = Open3.popen3("ruby #{file.path}")
       error_message = stderr.readlines.join
-      error_message.gsub!(/^?\s*\/[^:]*:/, " ruby:")
+      error_message.gsub!(/^?\s*\/[^:]*:/, " ruby:") if settings.simplify_error_trace
       eval_output += stdout.readlines.join + error_message
     ensure
       file.close
@@ -52,7 +59,7 @@ def eval_snippet(snippet)
     end
 
     eval_output = eval_output.strip
-    DC.set(cache_key, eval_output)
+    settings.cache_adapter.set(cache_key, eval_output)
     eval_output
   end
 end
@@ -116,8 +123,8 @@ post '/coba-ruby.json' do
   end
 
   answer_hash = generate_answer! params[:snippet], params[:challenge_path]
-  challenge_index = CHALLENGE_PATHS.index params[:challenge_path]
-  next_challenge_path = CHALLENGE_PATHS[challenge_index+1] if challenge_index
+  challenge_index = settings.challenge_paths.index params[:challenge_path]
+  next_challenge_path = settings.challenge_paths[challenge_index+1] if challenge_index
 
   if answer_hash[:is_correct] && next_challenge_path
     answer_hash.merge!(next_challenge_path: next_challenge_path)
@@ -125,3 +132,4 @@ post '/coba-ruby.json' do
 
   answer_hash.to_json
 end
+
