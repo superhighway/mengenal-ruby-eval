@@ -1,0 +1,1 @@
+buku == { "Laskar Pelangi" => :keren }
