@@ -2,6 +2,24 @@ require 'set'
 require 'active_support'
 require 'active_support/all'
 require 'markaby'
+
+def load_fake_root(directory, h, i)
+  Dir["#{directory}/*"].each do |f|
+    components = f.split('/')
+
+    if File.directory? f
+      dirname = components[i]
+      h[dirname] = {}
+      load_fake_root f, h[dirname], (i+1)
+    else
+      h[components.last] = File.read f
+    end
+  end
+end
+
+DIRECTORY_MAP = {}
+load_fake_root "fake-root", DIRECTORY_MAP, 1
+
 require 'fakefs'
 
 class << IO
