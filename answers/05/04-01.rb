@@ -1,0 +1,1 @@
+File.exist?('/Home/komik.txt') == true

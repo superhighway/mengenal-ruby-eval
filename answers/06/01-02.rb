@@ -1,0 +1,1 @@
+defined?(siapkan_komik) == "method"

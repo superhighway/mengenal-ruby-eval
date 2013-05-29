@@ -15,7 +15,7 @@ if ENV["ENVIRONMENT"] == "heroku"
            password: ENV["MEMCACHIER_PASSWORD"]})
   set :allowed_origins, %w{http://nyan.catcyb.org}
 else
-  simulate_heroku = true
+  simulate_heroku = false
   set :simplify_error_trace, simulate_heroku
   set :enable_uglify_ruby, simulate_heroku
   set :enable_cache, simulate_heroku
@@ -37,7 +37,7 @@ def allowed_origin(server_name)
   end
 end
 
-def eval_snippet(snippet)
+def eval_snippet(snippet, load_fake_root=false)
   cache_key = Digest::SHA1.hexdigest(snippet)
 
   if settings.enable_cache && cached_output = settings.cache_adapter.get(cache_key)
@@ -49,7 +49,8 @@ def eval_snippet(snippet)
     begin
       file.write settings.snippet_prefix + snippet
       file.rewind
-      stdin, stdout, stderr = Open3.popen3("ruby #{file.path}")
+      prefix = load_fake_root ? "FAKE_ROOT=1 " : ""
+      stdin, stdout, stderr = Open3.popen3(prefix + "ruby #{file.path}")
       error_message = stderr.readlines.join
       error_message.gsub!(/^?\s*\/[^:]*:/, " ruby:") if settings.simplify_error_trace
       eval_output += stdout.readlines.join + error_message
@@ -73,9 +74,13 @@ def validate_snippet!(snippet)
   end
 end
 
-def eval_snippet!(snippet)
+def eval_snippet!(snippet, load_fake_root=false)
   validate_snippet! snippet
-  eval_snippet snippet
+  eval_snippet snippet, load_fake_root
+end
+
+def should_load_fake_root(challenge_path)
+  challenge_path.start_with?("05/") || challenge_path.start_with?("06/")
 end
 
 def generate_answer!(snippet, challenge_path)
@@ -86,14 +91,16 @@ def generate_answer!(snippet, challenge_path)
     answer_content = File.read(answer_path)
     if answer_path.end_with? ".rb"
       snippet += "\np #{answer_content}"
-      output = eval_snippet! snippet
+      output = eval_snippet! snippet, should_load_fake_root(challenge_path)
       output_lines = output.lines
       is_correct = output_lines.last.strip == "true"
       output = output_lines[0...-1].join.strip
     else
-      output = eval_snippet! snippet
+      output = eval_snippet! snippet, should_load_fake_root(challenge_path)
       is_correct = output.match(/(^|\s*|\A)#{Regexp.escape answer_content}$/) != nil
     end
+  else
+    output = eval_snippet! snippet, should_load_fake_root(challenge_path)
   end
 
   { is_correct: is_correct, output: output }
