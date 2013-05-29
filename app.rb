@@ -68,9 +68,9 @@ end
 def validate_snippet!(snippet)
   snippet_size = snippet.bytesize
   if snippet_size > 1048576
-    halt 400, "Snippet is too long."
+    halt 400, "Ups error... Kodenya kepanjangan. Kurangin yah... Thx :)"
   elsif snippet_size <= 0
-    halt 400, "Snippet is empty."
+    halt 400, "Ups error... Kodenya kosong. Ketik sesuatu dong... Thx yah :)"
   end
 end
 
