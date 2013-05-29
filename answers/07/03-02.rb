@@ -1,1 +1,1 @@
-entry.title == "Hari ini Gunung Atap dicuri!
+entry.title == "Hari ini Gunung Atap dicuri!"
