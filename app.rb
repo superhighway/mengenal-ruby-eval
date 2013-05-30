@@ -58,7 +58,7 @@ def eval_snippet!(snippet, capabilities=[])
     eval_output = ''
 
     begin
-      snippet = [snippet, settings.popup_response_generator].join("\n") if capabilities.include?("popup")
+      snippet = [snippet, settings.popup_response_generator].join("\n") if capabilities.include?("popups")
       file.write settings.snippet_prefix + snippet
       file.rewind
       prefix = capabilities.map { |c| c.upcase + "=1 " }.join
@@ -101,9 +101,10 @@ def generate_answer!(params)
     output = eval_snippet! snippet, capabilities
     if capabilities.include?("popups")
       delimiter = "#"*50
-      *outputs, popups = output.split delimiter
-      output = outputs.join delimiter
-      popups = JSON.parse popups if popups
+      outputs = output.split delimiter
+      popups = outputs.last
+      output = outputs[0...-1].join delimiter
+      popups = JSON.parse(popups) if popups
     end
   end
 

@@ -1,7 +1,7 @@
 module Markaby
   class Builder
-    def link *args
-      link_to *args
+    def link name, url
+      a(href: url, target: "_blank") { name }
     end
 
     def listing *args
@@ -22,7 +22,7 @@ class Popup
   end
 
   def self.buat(&block)
-    content = Markaby::Builder.new.instance_eval(&block).to_s
+    content = Markaby::Builder.new.div(&block).to_s
     LIST << { type: "CRHTMLContent", content: content }
   end
 
