@@ -47,7 +47,7 @@ def validate_snippet!(snippet)
   end
 end
 
-def eval_snippet(snippet, capabilities=[])
+def eval_snippet!(snippet, capabilities=[])
   validate_snippet! snippet
   cache_key = Digest::SHA1.hexdigest(snippet)
 
