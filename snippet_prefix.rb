@@ -3,7 +3,9 @@ require 'active_support'
 require 'active_support/all'
 require 'markaby'
 
-if ENV["FAKE_ROOT"]
+popup_enabled = ENV["POPUPS"]
+use_fake_root = ENV["FAKE_ROOT"]
+if use_fake_root
   def load_fake_root_to_hash(directory, h, i)
     Dir["#{directory}/*"].each do |f|
       components = f.split('/')
@@ -59,3 +61,13 @@ module Kernel
   [:warn, :trace_var, :untrace_var, :at_exit, :syscall, :open, :gets, :readline, :select, :readlines, :`, :test, :srand, :rand, :trap, :exec, :fork, :exit!, :system, :spawn, :sleep, :exit, :abort, :load, :require, :require_relative, :caller, :caller_locations, :set_trace_func, :untrust, :untrusted?, :trust, :tap, :display].each { |m| undef_method m }
 end
 
+if popup_enabled
+  def require(name)
+    if name != "popup" || defined?(Popup)
+      false
+    else
+      eval File.read("/Libraries/#{name}.rb")
+      true
+    end
+  end
+end

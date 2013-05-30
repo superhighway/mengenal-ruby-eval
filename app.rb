@@ -29,6 +29,7 @@ def uglify_ruby(script)
 end
 
 set :snippet_prefix, uglify_ruby(File.read('snippet_prefix.rb'))
+set :popup_response_generator, uglify_ruby(File.read('popup_response_generator.rb'))
 
 def allowed_origin(server_name)
   if server_name
@@ -37,7 +38,17 @@ def allowed_origin(server_name)
   end
 end
 
-def eval_snippet(snippet, load_fake_root=false)
+def validate_snippet!(snippet)
+  snippet_size = snippet.bytesize
+  if snippet_size > 1048576
+    halt 400, "Ups error... Kodenya kepanjangan. Kurangin yah... Thx :)"
+  elsif snippet_size <= 0
+    halt 400, "Ups error... Kodenya kosong. Ketik sesuatu dong... Thx yah :)"
+  end
+end
+
+def eval_snippet(snippet, capabilities=[])
+  validate_snippet! snippet
   cache_key = Digest::SHA1.hexdigest(snippet)
 
   if settings.enable_cache && cached_output = settings.cache_adapter.get(cache_key)
@@ -47,9 +58,10 @@ def eval_snippet(snippet, load_fake_root=false)
     eval_output = ''
 
     begin
+      snippet = [snippet, settings.popup_response_generator].join("\n") if capabilities.include?("popup")
       file.write settings.snippet_prefix + snippet
       file.rewind
-      prefix = load_fake_root ? "FAKE_ROOT=1 " : ""
+      prefix = capabilities.map { |c| c.upcase + "=1 " }.join
       stdin, stdout, stderr = Open3.popen3(prefix + "ruby #{file.path}")
       error_message = stderr.readlines.join
       error_message.gsub!(/^?\s*\/[^:]*:/, " ruby:") if settings.simplify_error_trace
@@ -65,45 +77,37 @@ def eval_snippet(snippet, load_fake_root=false)
   end
 end
 
-def validate_snippet!(snippet)
-  snippet_size = snippet.bytesize
-  if snippet_size > 1048576
-    halt 400, "Ups error... Kodenya kepanjangan. Kurangin yah... Thx :)"
-  elsif snippet_size <= 0
-    halt 400, "Ups error... Kodenya kosong. Ketik sesuatu dong... Thx yah :)"
-  end
-end
-
-def eval_snippet!(snippet, load_fake_root=false)
-  validate_snippet! snippet
-  eval_snippet snippet, load_fake_root
-end
-
-def should_load_fake_root(challenge_path)
-  challenge_path.start_with?("05/") || challenge_path.start_with?("06/")
-end
-
-def generate_answer!(snippet, challenge_path)
+def generate_answer!(params)
+  snippet = params[:snippet]
+  challenge_path = params[:challenge_path]
+  capabilities = Set.new params[:capabilities]
   is_correct = false
   output = ""
+  popups = {}
 
   if (answer_path = Dir["answers/#{challenge_path}*"].first)
     answer_content = File.read(answer_path)
     if answer_path.end_with? ".rb"
       snippet += "\np #{answer_content}"
-      output = eval_snippet! snippet, should_load_fake_root(challenge_path)
+      output = eval_snippet! snippet, capabilities
       output_lines = output.lines
       is_correct = output_lines.last.strip == "true"
       output = output_lines[0...-1].join.strip
     else
-      output = eval_snippet! snippet, should_load_fake_root(challenge_path)
-      is_correct = output.match(/(^|\s*|\A)#{Regexp.escape answer_content}$/) != nil
+      output = eval_snippet! snippet, capabilities
+      is_correct = output.match(/(^|\s*|\A)#{Regexp.escape answer_content}\s*$/) != nil
     end
   else
-    output = eval_snippet! snippet, should_load_fake_root(challenge_path)
+    output = eval_snippet! snippet, capabilities
+    if capabilities.include?("popups")
+      delimiter = "#"*50
+      *outputs, popups = output.split delimiter
+      output = outputs.join delimiter
+      popups = JSON.parse popups if popups
+    end
   end
 
-  { is_correct: is_correct, output: output }
+  { is_correct: is_correct, output: output }.merge(popups)
 end
 
 
@@ -129,7 +133,7 @@ post '/coba-ruby.json' do
     headers['Access-Control-Allow-Methods'] = "POST"
   end
 
-  answer_hash = generate_answer! params[:snippet], params[:challenge_path]
+  answer_hash = generate_answer! params
   challenge_index = settings.challenge_paths.index params[:challenge_path]
   next_challenge_path = settings.challenge_paths[challenge_index+1] if challenge_index
 
