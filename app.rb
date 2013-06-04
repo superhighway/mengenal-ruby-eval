@@ -13,7 +13,7 @@ if ENV["ENVIRONMENT"] == "heroku"
   set :cache_adapter, Dalli::Client.new(ENV["MEMCACHIER_SERVERS"].split(","),
           {username: ENV["MEMCACHIER_USERNAME"],
            password: ENV["MEMCACHIER_PASSWORD"]})
-  set :allowed_origins, %w{http://nyan.catcyb.org}
+  set :allowed_origins, %w{http://nyan.catcyb.org http://id-ruby.org}
 else
   simulate_heroku = false
   set :simplify_error_trace, simulate_heroku
