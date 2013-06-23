@@ -14,6 +14,7 @@ if ENV["ENVIRONMENT"] == "heroku"
           {username: ENV["MEMCACHIER_USERNAME"],
            password: ENV["MEMCACHIER_PASSWORD"]})
   set :allowed_origins, %w{http://nyan.catcyb.org http://id-ruby.org}
+  set :enable_eval_debug, false
 else
   simulate_heroku = false
   set :simplify_error_trace, simulate_heroku
@@ -21,6 +22,7 @@ else
   set :enable_cache, simulate_heroku
   set :cache_adapter, Dalli::Client.new('localhost:11211')
   set :allowed_origins, %w{http://localhost:4567}
+  set :enable_eval_debug, true
 end
 
 def uglify_ruby(script)
@@ -59,7 +61,9 @@ def eval_snippet!(snippet, capabilities=[])
 
     begin
       snippet = [snippet, settings.popup_response_generator].join("\n") if capabilities.include?("popups")
-      file.write settings.snippet_prefix + snippet
+      snippet = settings.snippet_prefix + snippet
+      puts snippet if settings.enable_eval_debug
+      file.write snippet
       file.rewind
       prefix = capabilities.map { |c| c.upcase + "=1 " }.join
       stdin, stdout, stderr = Open3.popen3(prefix + "ruby #{file.path}")
@@ -73,6 +77,7 @@ def eval_snippet!(snippet, capabilities=[])
 
     eval_output = eval_output.strip
     settings.cache_adapter.set(cache_key, eval_output)
+    puts eval_output if settings.enable_eval_debug
     eval_output
   end
 end
