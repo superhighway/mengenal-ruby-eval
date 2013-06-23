@@ -1,15 +1,10 @@
 module Markaby
   class Builder
+    alias_method :listing, :ul
+    alias_method :item, :li
+
     def link name, url
       a(href: url, target: "_blank") { name }
-    end
-
-    def listing *args
-      ul *args
-    end
-
-    def item *args
-      li *args
     end
   end
 end
