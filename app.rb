@@ -122,22 +122,20 @@ end
 ### End Points
 ###################
 
-post '/' do
-  content_type 'text/plain'
+before do
   if server_name = allowed_origin(request.env["HTTP_ORIGIN"])
-    headers['Access-Control-Allow-Origin'] = server_name
+    headers['Access-Control-Allow-Origin'] = '*'
     headers['Access-Control-Allow-Methods'] = "POST"
   end
+end
 
+post '/' do
+  content_type 'text/plain'
   eval_snippet! params[:snippet]
 end
 
 post '/coba-ruby.json' do
   content_type 'application/json'
-  if server_name = allowed_origin(request.env["HTTP_ORIGIN"])
-    headers['Access-Control-Allow-Origin'] = server_name
-    headers['Access-Control-Allow-Methods'] = "POST"
-  end
 
   answer_hash = generate_answer! params
   challenge_index = settings.challenge_paths.index params[:challenge_path]
