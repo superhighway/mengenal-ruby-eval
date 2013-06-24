@@ -1,0 +1,5 @@
+require_relative 'safe_evalr/errors'
+require_relative 'safe_evalr/input'
+require_relative 'safe_evalr/output'
+require_relative 'safe_evalr/plain_ruby_engine'
+require_relative 'safe_evalr/coba_ruby_quiz_engine'

@@ -8,3 +8,8 @@ gem 'rack'
 gem 'sinatra'
 gem 'dalli'
 
+group :test do
+  gem 'rspec'
+  gem 'rack-test'
+end
+
