@@ -61,6 +61,10 @@ module Kernel
   [:warn, :trace_var, :untrace_var, :at_exit, :syscall, :open, :gets, :readline, :select, :readlines, :`, :test, :srand, :rand, :trap, :exec, :fork, :exit!, :system, :spawn, :sleep, :exit, :abort, :load, :require, :require_relative, :caller, :caller_locations, :set_trace_func, :untrust, :untrusted?, :trust, :tap, :display].each { |m| undef_method m }
 end
 
+class << Kernel
+  [:warn, :trace_var, :untrace_var, :at_exit, :syscall, :open, :gets, :readline, :select, :readlines, :`, :test, :srand, :rand, :trap, :exec, :fork, :exit!, :system, :spawn, :sleep, :exit, :abort, :load, :require, :require_relative, :caller, :caller_locations, :set_trace_func].each { |m| undef_method m }
+end
+
 if popup_enabled
   def require(name)
     if name != "popup" || defined?(Popup)
